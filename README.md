@@ -1,9 +1,22 @@
-# L2 Auction SDK
+# eXtensible Gas Auctions (XGA) SDK
 
-SDK for L2 auction bidders. To participate in the auction, bidders must be registered. Please contact Mev Protocol for registration. This guide provides information on how to interact with the auction contracts and the L2 RPC endpoints.
+SDK for XGA bidders and users. This guide provides information on how to interact with the auction contracts and the L2 RPC endpoints.
+
+**Bidders** 
+- Auction bidders can provide custom strategies either from an offchain bot or a contract. 
+- [OpenBidder contract is a full working example](./open-bidder-contracts/) 
+- New bidders must be registered with the protocol. Please contact [ops@manifoldfinance.com](mailto:ops@manifoldfinance.com) for registration. 
+
+**Users**
+- Private transactions and bundles can be passed to beta blocks through the deployed [OpenBidder](./open-bidder-contracts/).
+- Beta transactions can be constructed and submitted with provided [`cast`](./open-bidder-contracts/script/) or [`python`](./sign-eth-tx-py/) libs.
+
 
 ## Table of Contents
-
+- [Environment vars](#environment-vars)
+- [Beta Transactions](#beta-transactions)
+- [Bridge](#bridge)
+- [Using OpenBidder](#using-openbidder)
 - [RPC Endpoints](#rpc-endpoints)
 - [Bundle JSON Requests and Responses](#json-requests-and-responses)
 - [Contracts Addresses](#Contracts-Addresses)
@@ -16,8 +29,66 @@ SDK for L2 auction bidders. To participate in the auction, bidders must be regis
 - [Contributing](#contributing)
 - [License](#license)
 
+## Environment vars
+Copy [`.env.example`](.env.example) to `.env` and change as necessary. Testnet and mainnet details have been provided.
+
+## Beta Transactions
+**`MaxFeePerGas` = 0**
+An important difference with beta block transactions is that the `MaxFeePerGas` is set to zero. Instead this fee is set for the L2 bid. 
+
+### Construct and sign a beta transaction
+Make sure to setup env vars before signing txs.
+
+Using cast [(see script)](./open-bidder-contracts/script/sign-tx.sh):
+```sh
+./open-bidder-contracts/script/sign-tx.sh
+```
+
+Using python:
+```sh
+poetry run python sign-eth-tx-py/sign.py <contract> <value> <function_sig> <args>
+```
+
+## Bridge
+Before bidding, you will need to bridge ETH to L2 for bids.
+```bash
+# Fund L2 address by sending ETH to the bridge address.
+cast send -i $L1_BRIDGE --value 0.01ether --rpc-url $L1_RPC_URL --private-key $PRIVATE_KEY
+
+# Confirming the bridged Holesky ETH on L2
+cast balance $WALLET_ADDRESS --rpc-url $L2_RPC_URL
+```
+
+## Using OpenBidder
+Make sure to setup env vars before using open bidder, including `WEI_PER_GAS`. Scripts are provided for submitting a private transaction to OpenBidder. 
+
+Using cast [(see script)](./open-bidder-contracts/script/sign-submit-tx.sh):
+```sh
+./open-bidder-contracts/script/sign-submit-tx.sh
+```
+
+Using python:
+```sh
+poetry run beta_bundles_py/main.py
+```
+
 
 ## RPC Endpoints
+
+- **L2 RPC:**
+  - Description: L2 Node RPC
+  - URL: https://xga-api.securerpc.com/v1
+  - Methods: eth_*
+  - ChainId: 7890785
+
+- **Beta bundle RPC:**
+  - Description: Beta bundle submission RPC
+  - URL: [https://mainnet-auction.securerpc.com/](https://mainnet-auction.securerpc.com/)
+  - Method: mev_sendBetaBundle
+  - Parameters:
+    - `txs`: List of txs as bundle e.g. [0x2323...,]
+    - `slot`: slot number e.g. "11282389"
+  - ChainId: 1
 
 - **L2 RPC (TESTNET):**
   - Description: L2 Node RPC (Testnet)
@@ -64,37 +135,28 @@ SDK for L2 auction bidders. To participate in the auction, bidders must be regis
 
 ## Contracts Addresses
 
-### L1 Addresses (Testnet)
+### L1 Addresses
 | Contract         | Address                                                                                                                       |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| L1StandardBridge | [0x3Ae5Ca0B05bE12d4FF9983Ed70D86de9C34e820C](https://holesky.etherscan.io/address/0x3Ae5Ca0B05bE12d4FF9983Ed70D86de9C34e820C) |
+| L1StandardBridge | [0x490B959870889D5FA0B329431683B8B3e850DD95](https://etherscan.io/address/0x490B959870889D5FA0B329431683B8B3e850DD95) |
+| L1StandardBridge (testnet) | [0x3Ae5Ca0B05bE12d4FF9983Ed70D86de9C34e820C](https://holesky.etherscan.io/address/0x3Ae5Ca0B05bE12d4FF9983Ed70D86de9C34e820C) |
 
-### L2 Addresses (Testnet)
+### L2 Addresses
 | Contract        | Address                                                                                                                                   |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | WETH            | [0x4200000000000000000000000000000000000006](https://holesky-blockscout.securerpc.com/address/0x4200000000000000000000000000000000000006) |
-| Auctioneer      | [0x10DeC79E201FE7b27b8c4A1524d9733727D60ea4](https://holesky-blockscout.securerpc.com/address/0x10DeC79E201FE7b27b8c4A1524d9733727D60ea4) |
-| SettlementHouse | [0x46bb4fE80C04b5C28C761ADdd43FD10fFCcB57CE](https://holesky-blockscout.securerpc.com/address/0x46bb4fE80C04b5C28C761ADdd43FD10fFCcB57CE) |
-| Accountant      | [0x6B5021E079a3941cac287a4F24F411B1Ee87222f](https://holesky-blockscout.securerpc.com/address/0x6B5021E079a3941cac287a4F24F411B1Ee87222f) |
+| Auctioneer     | [0x86Bc75A43704E38f0FD94BdA423C50071fE17c99](https://xga-blockscout.securerpc.com/address/0x86Bc75A43704E38f0FD94BdA423C50071fE17c99) |
+| SettlementHouse | [0x80C5FfF824d14c87C799D6F90b7D8e0a715bd33C](https://xga-blockscout.securerpc.com/address/0x80C5FfF824d14c87C799D6F90b7D8e0a715bd33C) |
+| Accountant     | [0xE9B82BD9e839f1087d4017b4F7E928E0CADB2AF9](https://xga-blockscout.securerpc.com/address/0xE9B82BD9e839f1087d4017b4F7E928E0CADB2AF9) |
+| Auctioneer (testnet)     | [0x82052435119AedBEC6e237B5414880bF388F1B63](https://holesky-blockscout.securerpc.com/address/0x82052435119AedBEC6e237B5414880bF388F1B63) |
+| SettlementHouse (testnet) | [0x513844F4425d54beC19B0594AE072e49bEbBF388](https://holesky-blockscout.securerpc.com/address/0x513844F4425d54beC19B0594AE072e49bEbBF388) |
+| Accountant (testnet)     | [0x4641748a26D6fca7C11B0366C443dc83d6eb6Be1](https://holesky-blockscout.securerpc.com/address/0x4641748a26D6fca7C11B0366C443dc83d6eb6Be1) |
 
-
-## Bridge
-Before bidding, you will need to bridge ETH to L2 for gas fees.
-```bash
-# Fund L2 address by sending ETH to the bridge address.
-cast send -i $L1_BRIDGE --value 0.01ether --rpc-url $L1_RPC_URL --private-key $PRIVATE_KEY
-
-# Confirming the bridged Holesky ETH on L2
-cast balance $WALLET_ADDRESS --rpc-url $L2_RPC_URL
-```
 
 ## Bidding
 ***Only registered bidders can participate in the auction. Operators can onboard new bidders through the contract. Please contact Mev Protocol to proceed.***
 
 The following code snippet uses [Foundry](https://book.getfoundry.sh/getting-started/installation) as example.
-
-
-
 
 
 ### Manual bidding

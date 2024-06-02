@@ -1,6 +1,12 @@
 [submodule "open-bidder-contracts"]
 	path = open-bidder-contracts
-	url = https://github.com/MEV-Protocol/open-bidder-contracts
+	url = https://github.com/manifoldfinance/open-bidder-contracts
+	branch = main
 [submodule "beta-bundles-py"]
 	path = beta-bundles-py
-	url = https://github.com/MEV-Protocol/beta-bundles-py
+	url = https://github.com/manifoldfinance/beta-bundles-py
+	branch = master
+[submodule "sign-eth-tx-py"]
+	path = sign-eth-tx-py
+	url = https://github.com/manifoldfinance/sign-eth-tx-py.git
+	branch = master
