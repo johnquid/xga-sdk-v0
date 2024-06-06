@@ -77,7 +77,7 @@ poetry run beta_bundles_py/main.py
 
 - **L2 RPC:**
   - Description: L2 Node RPC
-  - URL: https://xga-api.securerpc.com/v1
+  - URL: [https://xga-api.securerpc.com/v1](https://xga-api.securerpc.com/v1)
   - Methods: eth_*
   - ChainId: 7890785
 
@@ -92,13 +92,13 @@ poetry run beta_bundles_py/main.py
 
 - **L2 RPC (TESTNET):**
   - Description: L2 Node RPC (Testnet)
-  - URL: [https://holesky-api.securerpc.com/l2](https://holesky-api.securerpc.com/l2/)
+  - URL: [https://holesky-api.xga.com/v1](https://holesky-api.xga.com/v1)
   - Methods: eth_*
   - ChainId: 42169
 
 - **Beta bundle RPC (TESTNET):**
   - Description: Beta bundle submission RPC
-  - URL: [https://holesky-api.securerpc.com/v2](https://holesky-api.securerpc.com/v2)
+  - URL: [https://holesky-rpc.xga.com/v1](https://holesky-rpc.xga.com/v1)
   - Method: mev_sendBetaBundle
   - Parameters:
     - `txs`: List of txs as bundle e.g. [0x2323...,]
