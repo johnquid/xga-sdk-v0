@@ -92,7 +92,7 @@ poetry run beta_bundles_py/main.py
 
 - **L2 RPC (TESTNET):**
   - Description: L2 Node RPC (Testnet)
-  - URL: [https://holesky-api.xga.com/v1](https://holesky-api.xga.com/v1)
+  - URL: [https://holesky-op.xga.com/v1](https://holesky-op.xga.com/v1)
   - Methods: eth_*
   - ChainId: 42169
 
