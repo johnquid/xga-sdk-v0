@@ -13,21 +13,36 @@ SDK for XGA bidders and users. This guide provides information on how to interac
 
 
 ## Table of Contents
-- [Environment vars](#environment-vars)
-- [Beta Transactions](#beta-transactions)
-- [Bridge](#bridge)
-- [Using OpenBidder](#using-openbidder)
-- [RPC Endpoints](#rpc-endpoints)
-- [Bundle JSON Requests and Responses](#json-requests-and-responses)
-- [Contracts Addresses](#Contracts-Addresses)
-- [Bidding](#Bidding)
-    - [Manual Bidding](#Manual-bidding)
-    - [Contract Bidding](#Contract-bidding)
-- [Send Tx and Bundle](#Send-Tx-and-Bundles)
-- [Bidder Contracts](#Bidder-Contracts)
-- [Bundler Examples](#bundler-examples)
-- [Contributing](#contributing)
-- [License](#license)
+- [eXtensible Gas Auctions (XGA) SDK](#extensible-gas-auctions-xga-sdk)
+  - [Table of Contents](#table-of-contents)
+  - [Environment vars](#environment-vars)
+  - [Beta Transactions](#beta-transactions)
+    - [Construct and sign a beta transaction](#construct-and-sign-a-beta-transaction)
+  - [Bridge](#bridge)
+  - [Using OpenBidder](#using-openbidder)
+  - [RPC Endpoints](#rpc-endpoints)
+  - [Bundle JSON Requests and Responses](#bundle-json-requests-and-responses)
+    - [Example JSON request](#example-json-request)
+    - [Example JSON response](#example-json-response)
+  - [Contracts Addresses](#contracts-addresses)
+    - [L1 Addresses](#l1-addresses)
+    - [L2 Addresses](#l2-addresses)
+  - [Bidding](#bidding)
+    - [Manual bidding](#manual-bidding)
+      - [Wrap ETH for bidding](#wrap-eth-for-bidding)
+      - [Get slot number of open auctions](#get-slot-number-of-open-auctions)
+      - [Place a bid](#place-a-bid)
+      - [Winning bid info](#winning-bid-info)
+    - [Contract bidding](#contract-bidding)
+  - [Send Tx and Bundles](#send-tx-and-bundles)
+      - [Check gas token balance for the slot](#check-gas-token-balance-for-the-slot)
+      - [Build and sign transaction on L1](#build-and-sign-transaction-on-l1)
+      - [Submit Tx to Beta Bundle RPC](#submit-tx-to-beta-bundle-rpc)
+      - [Pay gas token for the bundle on L2](#pay-gas-token-for-the-bundle-on-l2)
+  - [Bidder Contracts](#bidder-contracts)
+  - [Bundler Examples](#bundler-examples)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Environment vars
 Copy [`.env.example`](.env.example) to `.env` and change as necessary. Testnet and mainnet details have been provided.
@@ -38,19 +53,25 @@ An important difference with beta block transactions is that the `MaxFeePerGas` 
 
 ### Construct and sign a beta transaction
 Make sure to setup env vars before signing txs.
+`.env` expected params to be set: RPC,  
+OWNER_ADDRESS, MAX_GAS, PRIVATE_KEY, CHAIN_ID, MAX_PRIORITY_FEE_PER_GAS
 
-Using cast [(see script)](./open-bidder-contracts/script/sign-tx.sh):
+> [!IMPORTANT] Using rust
 ```sh
-./open-bidder-contracts/script/sign-tx.sh
+ cargo run --release sign <contract> <value> <function_sig> <function_args>
 ```
+> [!NOTE] for instance
+```
+cargo run --release sign 0x24Ae2dA0f361AA4BE46b48EB19C91e02c5e4f27E 0 "setMinWithdrawal(uint128)" 1000000000000000000
+```
+ > [!TIP] don't forget to wrap the third argument in quotes
 
-Using python:
-```sh
-poetry run python sign-eth-tx-py/sign.py <contract> <value> <function_sig> <args>
-```
 
 ## Bridge
 Before bidding, you will need to bridge ETH to L2 for bids.
+`cast` is Foundry’s command-line tool for performing Ethereum RPC calls:  
+you can make smart contract calls, send transactions, or retrieve any type of chain data.
+
 ```bash
 # Fund L2 address by sending ETH to the bridge address.
 cast send -i $L1_BRIDGE --value 0.01ether --rpc-url $L1_RPC_URL --private-key $PRIVATE_KEY
@@ -62,16 +83,11 @@ cast balance $WALLET_ADDRESS --rpc-url $L2_RPC_URL
 ## Using OpenBidder
 Make sure to setup env vars before using open bidder, including `WEI_PER_GAS`. Scripts are provided for submitting a private transaction to OpenBidder. 
 
-Using cast [(see script)](./open-bidder-contracts/script/sign-submit-tx.sh):
-```sh
-./open-bidder-contracts/script/sign-submit-tx.sh
-```
 
-Using python:
+Using rust:
 ```sh
-poetry run beta_bundles_py/main.py
+cargo run --release bidder ...
 ```
-
 
 ## RPC Endpoints
 
