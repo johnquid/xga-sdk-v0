@@ -1,14 +1,14 @@
 
 use alloy::{
-    primitives::{address, Address, U256, 
-        keccak256, Bytes, utils::format_units},
+    primitives::{address, Address, U256, hex,
+        Bytes, utils::format_units},
         signers::local::PrivateKeySigner, 
         providers::{Provider, ProviderBuilder}, 
         network::{AnyNetwork, 
         EthereumWallet, TransactionBuilder},
     rpc::types::request::TransactionRequest,
-    sol, sol_types::{SolCall, SolType},
-    json_abi::JsonAbi
+    sol, json_abi::{Function, JsonAbi},
+    dyn_abi::{DynSolType, DynSolValue, JsonAbiExt},
 };
 use eyre::Result;
 use dotenv::dotenv;
@@ -18,7 +18,7 @@ use std::env;
 use tokio;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load the .env file
     dotenv().ok();
     // Set up the HTTP transport which is consumed by the RPC client.
@@ -89,53 +89,41 @@ async fn main() -> Result<()> {
         let function_signature = command_line_args[4].clone();
         println!("function_signature: {:?}", function_signature);
 
-        let function_name = &function_signature[..function_signature.find('(').unwrap()];
-        println!("function name: {:?}", function_name);
-
         let function_arguments = command_line_args[5..].to_vec();
         println!("function_arguments: {:?}", function_arguments);
 
-        let sig = keccak256(function_signature.as_bytes());
-        let function_sig = &function_signature[
-            function_signature.find('(').unwrap() + 1..function_signature.find(')').unwrap()
-        ];
-        let function_sig_args: Vec<_> = function_sig.split(',').collect();
-        // Prepare to encode the inputs
-        let mut encoded_data = Vec::new();
+         // Parse the function signature
+        let function = Function::parse(&function_signature)?;
 
-        // Append function selector (first 4 bytes of the hash)...
-        let function_selector = keccak256(function_name.as_bytes());
-        encoded_data.extend_from_slice(&function_selector[0..4]);
-        for (i, arg) in function_sig_args.iter().enumerate() {
-            let arg_trimmed = arg.trim();
-            let type_and_name: Vec<&str> = arg_trimmed.split_whitespace().collect();
-            let arg_type = type_and_name[0];
-            
-            // Match the type and encode accordingly
-            match arg_type {
-                "uint" => {
-                    let value: U256 = function_arguments[i].parse().expect("Invalid uint");
-                    let encoded = <sol!(uint256)>::abi_encode(&value);
-                    encoded_data.extend_from_slice(&encoded);
-                },
-                "address" => {
-                    let value: Address = function_arguments[i].parse().expect("Invalid address");
-                    let encoded = <sol!(address)>::abi_encode(&value);
-                    encoded_data.extend_from_slice(&encoded);
-                },
-                "bytes" => {
-                    let value = function_arguments[i].as_bytes().to_vec();
-                    let encoded = <sol!(bytes)>::abi_encode(&value);
-                    encoded_data.extend_from_slice(&encoded);
-                },
-                "bool" => {
-                    let value: bool = function_arguments[i].parse().expect("Invalid bool");
-                    let encoded = <sol!(bool)>::abi_encode(&value);
-                    encoded_data.extend_from_slice(&encoded);
+        // Prepare arguments for ABI encoding
+        let mut abi_args = Vec::new();
+
+        // Process each argument based on the type
+        for (i, input) in function.inputs.iter().enumerate() {
+            if let Some(internal_type) = &input.internal_type {
+                match internal_type.to_string().as_str() {
+                    "uint" => {
+                        let value: U256 = function_arguments[i].parse().expect("Invalid uint");
+                        abi_args.push(DynSolValue::Uint(value.into(), 256));
+                    },
+                    "address" => {
+                        let value: Address = function_arguments[i].parse().expect("Invalid address");
+                        abi_args.push(DynSolValue::Address(value));
+                    },
+                    "bytes" => {
+                        let value = function_arguments[i].as_bytes().to_vec();
+                        abi_args.push(DynSolValue::Bytes(value));
+                    },
+                    "bool" => {
+                        let value: bool = function_arguments[i].parse().expect("Invalid bool");
+                        abi_args.push(DynSolValue::Bool(value));
+                    }
+                    _ => panic!("Unsupported type!"),
                 }
-                _ => panic!("Unsupported type!"),
             }
         }
+        // ABI encode the function call
+        let encoded_data = function.abi_encode_input(&abi_args)?;
         // Convert encoded data to Bytes for TransactionRequest
         let input = Bytes::from(encoded_data);
         let tx = TransactionRequest::default()
