@@ -7,7 +7,8 @@ use alloy::{
         network::{AnyNetwork, 
         EthereumWallet, TransactionBuilder},
     rpc::types::request::TransactionRequest,
-    sol, sol_types::{SolCall, SolType}
+    sol, sol_types::{SolCall, SolType},
+    json_abi::JsonAbi
 };
 use eyre::Result;
 use dotenv::dotenv;
@@ -52,7 +53,7 @@ async fn main() -> Result<()> {
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
         .network::<AnyNetwork>()
-        .wallet(wallet)
+        .wallet(wallet.clone())
         .on_http(rpc_url);
      
     // Get transaction count
@@ -79,20 +80,19 @@ async fn main() -> Result<()> {
     if command_line_args[1] == "sign" {
         let contract = Address::from_str(
             &command_line_args[2]).expect("Invalid contract address"
-        );
+        ); println!("contract: {:?}", contract);
         let value = U256::from_str_radix(
             &command_line_args[3].trim(), 10
         ).expect("Invalid value");
-        
+        println!("value: {:?}", value);
+
         let function_signature = command_line_args[4].clone();
-        let function_name = &function_signature[..function_signature.find('(').unwrap()];
-        let function_arguments = command_line_args[5..].to_vec();
-        
-        println!("contract: {:?}", contract);
-        println!("value: {:?}", value);
-        println!("value: {:?}", value);
-        println!("function name: {:?}", function_name);
         println!("function_signature: {:?}", function_signature);
+
+        let function_name = &function_signature[..function_signature.find('(').unwrap()];
+        println!("function name: {:?}", function_name);
+
+        let function_arguments = command_line_args[5..].to_vec();
         println!("function_arguments: {:?}", function_arguments);
 
         let sig = keccak256(function_signature.as_bytes());
@@ -148,9 +148,14 @@ async fn main() -> Result<()> {
             .with_max_priority_fee_per_gas(priority_fee.try_into().expect("too large"))
             .with_max_fee_per_gas(wei_per_gas * 2);
 
-        // Send the transaction and wait for inclusion.
-        // let tx_hash = provider.send_transaction(tx).await?.watch().await?;
-        // println!("Sent transaction: {tx_hash}");
+        // Build and sign the transaction using the `EthereumWallet` with the provided wallet.
+        let tx_envelope = tx.build(&wallet).await?;
+        
+        // Send the raw transaction and retrieve the transaction receipt.
+        // [Provider::send_tx_envelope] is a convenience method that encodes the transaction using
+        // EIP-2718 encoding and broadcasts it to the network using [Provider::send_raw_transaction].
+        let receipt = provider.send_tx_envelope(tx_envelope).await?.get_receipt().await?;
+        println!("Sent transaction: {}", receipt.transaction_hash);
     } else {
         // TODO
     }    
