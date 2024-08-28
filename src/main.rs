@@ -1,12 +1,14 @@
 
-use alloy::{
+use alloy_serde::WithOtherFields;
+use alloy::{    
+    consensus::TxEnvelope,
     contract::{ContractInstance, Interface},
     primitives::{address, Address, U256, I256, 
         keccak256, Bytes, utils::format_units},
         signers::local::PrivateKeySigner, 
         providers::{Provider, ProviderBuilder}, 
         network::{Ethereum, EthereumWallet, Network,
-            AnyNetwork, TransactionBuilder},
+            AnyNetwork, TransactionBuilder, eip2718::Encodable2718},
     json_abi::JsonAbi, rpc::types::{Filter, 
         request::TransactionRequest},
     transports::http::{Client, Http},
@@ -174,7 +176,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_max_fee_per_gas(base_fee);
 
         // Build and sign the transaction using the `EthereumWallet` with the provided wallet.
-        let tx_envelope_global = tx_global.build(&wallet).await?;
+        let tx_with_other_fields = &WithOtherFields::new(tx_global.clone());
+        let tx_envelope_global = tx_global.build(&wallet).await?;    
+        let estimate = provider_l1.estimate_gas(tx_with_other_fields).await?;
     
         let bidder_address = Address::from_str(
             &env::var("BIDDER").expect("BIDDER not found in .env file")
@@ -217,8 +221,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut encoded = <sol!(uint128)>::abi_encode(&wei_per_gas);
                     encoded_data.extend_from_slice(&encoded);
                     
-                    let gas = 42; // TODO estimate gas
-                    encoded = <sol!(uint120)>::abi_encode(&gas);
+                    let gas_estimate = estimate * wei_per_gas;
+                    encoded = <sol!(uint120)>::abi_encode(&gas_estimate);
                     encoded_data.extend_from_slice(&encoded);
 
                     let hash = send_bundle(&rpc_url, &tx_envelope_global, slot).await.ok_or("Failed to get hash from send_bundle")?;
@@ -237,7 +241,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let calldata = Bytes::from(encoded_data);
                     let tx = TransactionRequest::default()
                         .with_to(bidder_address)
-                        .with_value(U256::from(wei_per_gas * gas))
+                        .with_value(U256::from(gas_estimate))
                         .with_nonce(tx_count_l2)
                         .with_input(calldata);
             
@@ -340,7 +344,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn send_bundle(bundle_rpc: &str, tx_envelope_global: &<AnyNetwork as Network>::TxEnvelope, slot: U256) -> Option<Value> {
     // Step 1: Extract the raw transaction and convert to hex
-    let raw_transaction_bytes = tx_envelope_global.as_bytes(); // TODO fix this 
+    let raw_transaction_bytes = tx_envelope_global.encoded_2718(); // TODO fix this 
     let raw_transaction_hex = encode(raw_transaction_bytes);
 
     // Step 2: Create the list of transactions
