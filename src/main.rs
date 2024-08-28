@@ -196,7 +196,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let sig_auction_paid = keccak256("AuctionPaidOut(uint256)".as_bytes());
         let sig_auction_refunded = keccak256("AuctionRefund(uint256)".as_bytes());
 
-        //loop {
+        loop {
             // Create a filter to get all logs from the latest block.
             let filter = Filter::new().from_block(latest_block).address(auctioneer_address);
             // Get all logs from the latest block that match the filter.
@@ -336,21 +336,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Block missed. Trying for next auction slot.");
                 }
             }
-            // sleep(Duration::from_secs(2)).await;
-        //}
+            sleep(Duration::from_secs(2)).await;
+        }
     }  
     Ok(())
 }
 
 async fn send_bundle(bundle_rpc: &str, tx_envelope_global: &<AnyNetwork as Network>::TxEnvelope, slot: U256) -> Option<Value> {
     // Step 1: Extract the raw transaction and convert to hex
-    let raw_transaction_bytes = tx_envelope_global.encoded_2718(); // TODO fix this 
-    let raw_transaction_hex = encode(raw_transaction_bytes);
-
-    // Step 2: Create the list of transactions
-    let txs = vec![raw_transaction_hex];
-
-    // Step 3: Construct the JSON-RPC request
+    let raw_transaction = tx_envelope_global.encoded_2718();
+    let txs = vec![raw_transaction];
     let req = json!({
         "jsonrpc": "2.0",
         "method": "mev_sendBetaBundle",
@@ -360,10 +355,7 @@ async fn send_bundle(bundle_rpc: &str, tx_envelope_global: &<AnyNetwork as Netwo
         }],
         "id": 1
     });
-
-    // Step 4: Send the request and handle the response
     let client = ReqwestClient::new();
-    // Step 5: Set headers and send the request
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
  
